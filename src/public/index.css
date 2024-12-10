@@ -1,0 +1,21 @@
+#chessBoard{
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    grid-template-rows: repeat(8, 1fr);
+    aspect-ratio: 1 / 1;
+    height: 100vh;
+    margin: auto;
+}
+.tile{
+    display: flex;
+    border: 1px solid #dddddd;
+    aspect-ratio: 1 / 1;
+    width: 100%;
+    justify-content: center;
+    align-items: center;
+    background-color: brown;
+}
+
+.tile:hover{
+    background-color: gray;
+}
