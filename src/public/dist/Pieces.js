@@ -123,8 +123,21 @@ class chessBoard {
         }
     }
     ;
-    piece(i, j) {
+    piece_by_location(i, j) {
         return this._board[i][j];
+    }
+    ;
+    move(row_o, col_o, row_d, col_d) {
+        const origin_piece = this.piece_by_location(row_o, row_d);
+        if (typeof (origin_piece) === "number")
+            return false;
+        const int16Destination = new Int16Array([row_d, col_d]);
+        if (origin_piece.valid_move(int16Destination)) {
+            //try to make the move 
+        }
+    }
+    get board() {
+        return this._board;
     }
 }
 function assign(tile, i, j) {

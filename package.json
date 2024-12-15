@@ -5,7 +5,9 @@
   "main": "index.js",
   "scripts": {
     "test": "jest",
-    "build": "tsc && webpack"
+    "build": "tsc && webpack",
+    "server": "node ./src/server.js",
+    "both": "npm run build && npm run server"
   },
   "repository": {
     "type": "git",

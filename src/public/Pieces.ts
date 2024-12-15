@@ -1,4 +1,4 @@
-class Piece {
+abstract class Piece {
     _color: Number;
     _location: number[];
     constructor(color: Number, location: number[]) {
@@ -20,9 +20,12 @@ class Piece {
     set location(location) {
         this._location = location
     }
+
+    abstract valid_move(desired_location: Int16Array) : boolean;
 }
 
 class Pawn extends Piece{
+    //1 means you are white, -1 is black
     public constructor(color: Number, location: number[]) {
         super(color, location); 
     }
@@ -32,7 +35,7 @@ class Pawn extends Piece{
     valid_move(desired_location: Int16Array) {
         const [row, col] = desired_location;
         const [curr_r, curr_c] = this._location;
-        return col == curr_c && curr_c + this._color.valueOf() == col
+        return col == curr_c && curr_r + this._color.valueOf() == col
     }
 };
 
@@ -126,8 +129,21 @@ class chessBoard{
         }
     };
 
-    piece(i: number, j:number){
+    piece_by_location(i: number, j:number){
         return this._board[i][j]
+    };
+
+    move(row_o: number, col_o: number, row_d: number, col_d: number){
+        const origin_piece: number | Piece = this.piece_by_location(row_o, row_d);
+        if (typeof(origin_piece) === "number") return false; 
+        const int16Destination : Int16Array = new Int16Array([row_d, col_d])
+        if(origin_piece.valid_move(int16Destination)){
+            //try to make the move 
+        }
+    }
+
+    get board(){
+        return this._board;
     }
 }
 
