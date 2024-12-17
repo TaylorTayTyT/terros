@@ -20,8 +20,11 @@ abstract class Piece {
     set location(location) {
         this._location = location
     }
+    move(row: number, col: number) {
+        this.location = [row, col]
+    }
 
-    abstract valid_move(desired_location: Int16Array) : boolean;
+    abstract valid_move(desired_location: Int16Array, cb: chessBoard) : boolean;
 }
 
 class Pawn extends Piece{
@@ -32,11 +35,12 @@ class Pawn extends Piece{
     get color() {
         return this._color;
     };
-    valid_move(desired_location: Int16Array) {
+    valid_move(desired_location: Int16Array, cb: chessBoard) {
         const [row, col] = desired_location;
         const [curr_r, curr_c] = this._location;
-        return col == curr_c && curr_r + this._color.valueOf() == col
-    }
+        const moveOnce = col == curr_c && curr_r + this._color.valueOf() == row
+        return col == curr_c && curr_r + this._color.valueOf() == row
+    };
 };
 
 class King extends Piece{
@@ -46,7 +50,7 @@ class King extends Piece{
     get color() {
         return this._color;
     };
-    valid_move(desired_location: Int16Array) {
+    valid_move(desired_location: Int16Array, cb: chessBoard) {
         const [row, col] = desired_location;
         const [curr_r, curr_c] = this._location;
         return Math.abs(row - curr_r) == 1 && col - curr_c == 0 || Math.abs(col - curr_c) == 1 && row - curr_r == 0
@@ -61,7 +65,7 @@ class Rook extends Piece {
         return this._color;
     };
 
-    valid_move(desired_location: Int16Array){
+    valid_move(desired_location: Int16Array, cb: chessBoard){
         const [row, col] = desired_location;
         const [curr_r, curr_c] = this._location;
         
@@ -76,7 +80,7 @@ class Bishop extends Piece{
     get color() {
         return this._color;
     };
-    valid_move(desired_location: Int16Array){
+    valid_move(desired_location: Int16Array, cb: chessBoard){
         const [row, col] = desired_location;
         const [curr_r, curr_c] = this._location;
         return Math.abs(curr_r - row) == Math.abs(curr_c - col)
@@ -90,7 +94,7 @@ class Queen extends Piece{
     get color() {
         return this._color;
     };
-    valid_move(desired_location: Int16Array){
+    valid_move(desired_location: Int16Array, cb: chessBoard){
         const [row, col] = desired_location;
         const [curr_r, curr_c] = this._location;
         return Math.abs(curr_r - row) == Math.abs(curr_c - col) || row == curr_r && col != curr_c || row != curr_r && col == curr_c;
@@ -104,7 +108,7 @@ class Knight extends Piece{
     public get color() {
         return this._color;
     };
-    valid_move(desired_location: Int16Array){
+    valid_move(desired_location: Int16Array, cb: chessBoard){
         const [row, col] = desired_location;
         const [curr_r, curr_c] = this._location;
         return Math.abs(curr_r - row) == 2 && Math.abs(curr_c - col) == 1 || Math.abs(curr_r - row) == 1 && Math.abs(curr_c - col) == 2;
@@ -113,17 +117,60 @@ class Knight extends Piece{
 
 
 class chessBoard{
+    private _move: number = 0; 
     private _board: number[][] | Piece[][]; 
+    private _turn: number;
     constructor(){
+        this._turn = 1; 
         this._board = Array.from({length: 8}, () => Array(8).fill(0))
         //this._board = new Array(8).fill().map(() => new Array(8).fill(0));
         for (let i: number = 0; i < this._board.length; i++){
-            for (let j: number = 0; j < this._board.length; j++){ 
+            for (let j: number = 0; j < this._board.length; j++){
                 if(i == 1) {
                     this._board[i][j] = new Pawn(1, [i,j]);
                 }
                 if(i == 6){
                     this._board[i][j] = new Pawn(-1, [i,j]);
+                }
+                if(i == 0){
+                    if(j == 0 || j == 7){
+                        this._board[i][j] = new Rook(1, [i, j]);
+                    }
+                    else if(j == 1 || j == 6){
+                        this._board[i][j] = new Knight(1, [i, j]);
+                    }
+                    else if(j == 2 || j == 5){
+                        this._board[i][j] = new Bishop(1, [i, j]);
+                    }
+                    else if(j == 3){
+                        this._board[i][j] = new King(1, [i, j]);
+                    }
+                    else if(j == 4){
+                        this._board[i][j] = new Queen(1, [i, j]);
+                    }
+                    else{
+                        console.error("naurrr")
+                    }
+                }
+                if(i == 7){
+                    if (j == 0 || j == 7){
+                        this._board[i][j] = new Rook(-1, [i, j]);
+                    }
+                    else if(j == 1 || j == 6){
+                        this._board[i][j] = new Knight(-1, [i, j]);
+                    }
+                    else if(j == 2 || j == 5){
+                        this._board[i][j] = new Bishop(-1, [i, j]);
+                    }
+                    else if(j == 3){
+                        this._board[i][j] = new Queen(-1, [i, j]);
+                    }
+                    else if(j == 4){
+                        this._board[i][j] = new King(-1, [i, j]);
+                    }
+                    else{
+                        console.error("naurrr")
+                    }
                 }
             }
         }
@@ -133,17 +180,34 @@ class chessBoard{
         return this._board[i][j]
     };
 
-    move(row_o: number, col_o: number, row_d: number, col_d: number){
-        const origin_piece: number | Piece = this.piece_by_location(row_o, row_d);
+    move(row_o: number, col_o: number, row_d: number, col_d: number) : boolean{
+        const origin_piece: number | Piece = this.piece_by_location(row_o, col_o);
+
+        //want to move a piece thats not a piece
         if (typeof(origin_piece) === "number") return false; 
+
+        if(origin_piece._color != this._turn) return false; 
+
+        //piece is verified to be a piece
         const int16Destination : Int16Array = new Int16Array([row_d, col_d])
-        if(origin_piece.valid_move(int16Destination)){
-            //try to make the move 
+        //check if that piece can hypothetically move to the desired location
+        if(origin_piece.valid_move(int16Destination, this)){
+            this._board[row_d][col_d] = origin_piece; 
+            origin_piece.move(row_d, col_d);
+            return true;
         }
+        console.log(this._board)
+        return false;
     }
 
-    get board(){
+    public get board(){
         return this._board;
+    };
+    public get turn(){
+        return this._turn;
+    }
+    public switchTurn(){
+        this._turn *= -1; 
     }
 }
 

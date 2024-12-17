@@ -20,6 +20,9 @@
     background-color: gray;
 }
 
-.inactive{
-    
+.white{
+    color: white;
+}
+.black{
+    color: black;
 }

@@ -19,8 +19,12 @@ class Piece {
     set location(location) {
         this._location = location;
     }
+    move(row, col) {
+        this.location = [row, col];
+    }
 }
 class Pawn extends Piece {
+    //1 means you are white, -1 is black
     constructor(color, location) {
         super(color, location);
     }
@@ -31,8 +35,9 @@ class Pawn extends Piece {
     valid_move(desired_location) {
         const [row, col] = desired_location;
         const [curr_r, curr_c] = this._location;
-        return col == curr_c && curr_c + this._color.valueOf() == col;
+        return col == curr_c && curr_r + this._color.valueOf() == row;
     }
+    ;
 }
 ;
 class King extends Piece {
@@ -109,6 +114,7 @@ class Knight extends Piece {
 }
 class chessBoard {
     constructor() {
+        this._turn = 1;
         this._board = Array.from({ length: 8 }, () => Array(8).fill(0));
         //this._board = new Array(8).fill().map(() => new Array(8).fill(0));
         for (let i = 0; i < this._board.length; i++) {
@@ -119,6 +125,46 @@ class chessBoard {
                 if (i == 6) {
                     this._board[i][j] = new Pawn(-1, [i, j]);
                 }
+                if (i == 0) {
+                    if (j == 0 || j == 7) {
+                        this._board[i][j] = new Rook(1, [i, j]);
+                    }
+                    else if (j == 1 || j == 6) {
+                        this._board[i][j] = new Knight(1, [i, j]);
+                    }
+                    else if (j == 2 || j == 5) {
+                        this._board[i][j] = new Bishop(1, [i, j]);
+                    }
+                    else if (j == 3) {
+                        this._board[i][j] = new King(1, [i, j]);
+                    }
+                    else if (j == 4) {
+                        this._board[i][j] = new Queen(1, [i, j]);
+                    }
+                    else {
+                        console.error("naurrr");
+                    }
+                }
+                if (i == 7) {
+                    if (j == 0 || j == 7) {
+                        this._board[i][j] = new Rook(-1, [i, j]);
+                    }
+                    else if (j == 1 || j == 6) {
+                        this._board[i][j] = new Knight(-1, [i, j]);
+                    }
+                    else if (j == 2 || j == 5) {
+                        this._board[i][j] = new Bishop(-1, [i, j]);
+                    }
+                    else if (j == 3) {
+                        this._board[i][j] = new Queen(-1, [i, j]);
+                    }
+                    else if (j == 4) {
+                        this._board[i][j] = new King(-1, [i, j]);
+                    }
+                    else {
+                        console.error("naurrr");
+                    }
+                }
             }
         }
     }
@@ -128,16 +174,32 @@ class chessBoard {
     }
     ;
     move(row_o, col_o, row_d, col_d) {
-        const origin_piece = this.piece_by_location(row_o, row_d);
+        const origin_piece = this.piece_by_location(row_o, col_o);
+        //want to move a piece thats not a piece
         if (typeof (origin_piece) === "number")
             return false;
+        if (origin_piece._color != this._turn)
+            return false;
+        //piece is verified to be a piece
         const int16Destination = new Int16Array([row_d, col_d]);
+        //check if that piece can hypothetically move to the desired location
         if (origin_piece.valid_move(int16Destination)) {
-            //try to make the move 
+            this._board[row_d][col_d] = origin_piece;
+            origin_piece.move(row_d, col_d);
+            return true;
         }
+        console.log(this._board);
+        return false;
     }
     get board() {
         return this._board;
+    }
+    ;
+    get turn() {
+        return this._turn;
+    }
+    switchTurn() {
+        this._turn *= -1;
     }
 }
 function assign(tile, i, j) {
