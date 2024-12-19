@@ -31,6 +31,7 @@ function render(row_o, col_o, row_d, col_d) {
         }
         ;
         cb.switchTurn();
+        cb._move += 1;
     }
 }
 function initialize() {

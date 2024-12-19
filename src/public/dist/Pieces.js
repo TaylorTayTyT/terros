@@ -3,6 +3,7 @@ class Piece {
     constructor(color, location) {
         this._color = color; // Use a different name for the internal variable (e.g., _color)
         this._location = location;
+        this._moves = 0;
     }
     // Getter for color
     get color() {
@@ -22,6 +23,12 @@ class Piece {
     move(row, col) {
         this.location = [row, col];
     }
+    get moves() {
+        return this._moves;
+    }
+    increase_moves() {
+        this._moves += 1;
+    }
 }
 class Pawn extends Piece {
     //1 means you are white, -1 is black
@@ -32,10 +39,28 @@ class Pawn extends Piece {
         return this._color;
     }
     ;
-    valid_move(desired_location) {
+    valid_move(desired_location, cb) {
         const [row, col] = desired_location;
         const [curr_r, curr_c] = this._location;
-        return col == curr_c && curr_r + this._color.valueOf() == row;
+        const col_correct = col == curr_c;
+        let valid = false;
+        const movedOnce = curr_r + this._color.valueOf() == row;
+        const movedTwice = curr_r + 2 * this.color.valueOf() == row;
+        const occupied = typeof (cb.piece_by_location(row, col)) !== "number";
+        const capture = Math.abs(col - curr_c).valueOf() == 1 && movedOnce && occupied;
+        if (col_correct) {
+            const no_traffic = cb.one_at_a_time([this._color.valueOf(), 0], [row, col], [curr_r, curr_c]);
+            if (movedOnce && no_traffic) {
+                valid = true;
+            }
+            else if (this._moves == 0 && movedTwice && no_traffic) {
+                valid = true;
+            }
+        }
+        ;
+        if (capture)
+            valid = true;
+        return valid;
     }
     ;
 }
@@ -48,7 +73,7 @@ class King extends Piece {
         return this._color;
     }
     ;
-    valid_move(desired_location) {
+    valid_move(desired_location, cb) {
         const [row, col] = desired_location;
         const [curr_r, curr_c] = this._location;
         return Math.abs(row - curr_r) == 1 && col - curr_c == 0 || Math.abs(col - curr_c) == 1 && row - curr_r == 0;
@@ -63,9 +88,10 @@ class Rook extends Piece {
         return this._color;
     }
     ;
-    valid_move(desired_location) {
+    valid_move(desired_location, cb) {
         const [row, col] = desired_location;
         const [curr_r, curr_c] = this._location;
+        const technically_valid = row == curr_r && col != curr_c || row != curr_r && col == curr_c;
         return row == curr_r && col != curr_c || row != curr_r && col == curr_c;
     }
 }
@@ -78,10 +104,16 @@ class Bishop extends Piece {
         return this._color;
     }
     ;
-    valid_move(desired_location) {
+    valid_move(desired_location, cb) {
         const [row, col] = desired_location;
         const [curr_r, curr_c] = this._location;
-        return Math.abs(curr_r - row) == Math.abs(curr_c - col);
+        const x_direction = col - curr_c > 0 ? 1 : -1;
+        const y_direction = row - curr_r > 0 ? 1 : -1;
+        const technically_valid = Math.abs(curr_r - row) == Math.abs(curr_c - col);
+        const no_traffic = cb.one_at_a_time([x_direction, y_direction], [row, col], [curr_r, curr_c]);
+        if (technically_valid && no_traffic)
+            return true;
+        return false;
     }
 }
 class Queen extends Piece {
@@ -92,7 +124,7 @@ class Queen extends Piece {
         return this._color;
     }
     ;
-    valid_move(desired_location) {
+    valid_move(desired_location, cb) {
         const [row, col] = desired_location;
         const [curr_r, curr_c] = this._location;
         return Math.abs(curr_r - row) == Math.abs(curr_c - col) || row == curr_r && col != curr_c || row != curr_r && col == curr_c;
@@ -106,7 +138,7 @@ class Knight extends Piece {
         return this._color;
     }
     ;
-    valid_move(desired_location) {
+    valid_move(desired_location, cb) {
         const [row, col] = desired_location;
         const [curr_r, curr_c] = this._location;
         return Math.abs(curr_r - row) == 2 && Math.abs(curr_c - col) == 1 || Math.abs(curr_r - row) == 1 && Math.abs(curr_c - col) == 2;
@@ -114,6 +146,7 @@ class Knight extends Piece {
 }
 class chessBoard {
     constructor() {
+        this._move = 0;
         this._turn = 1;
         this._board = Array.from({ length: 8 }, () => Array(8).fill(0));
         //this._board = new Array(8).fill().map(() => new Array(8).fill(0));
@@ -173,6 +206,24 @@ class chessBoard {
         return this._board[i][j];
     }
     ;
+    add(from, moveset) {
+        return [from[0] + moveset[0], from[1] + moveset[1]];
+    }
+    ;
+    equals(from, to) {
+        return from[0] == to[0] && from[1] == to[1];
+    }
+    ;
+    one_at_a_time(moveset, desired_location, origin_location) {
+        while (!this.equals(desired_location, origin_location)) {
+            origin_location = this.add(origin_location, moveset);
+            const new_piece = this.piece_by_location(origin_location[0], origin_location[1]);
+            if (typeof new_piece != "number")
+                return false;
+        }
+        return true;
+    }
+    ;
     move(row_o, col_o, row_d, col_d) {
         const origin_piece = this.piece_by_location(row_o, col_o);
         //want to move a piece thats not a piece
@@ -183,9 +234,13 @@ class chessBoard {
         //piece is verified to be a piece
         const int16Destination = new Int16Array([row_d, col_d]);
         //check if that piece can hypothetically move to the desired location
-        if (origin_piece.valid_move(int16Destination)) {
+        if (origin_piece.valid_move(int16Destination, this)) {
             this._board[row_d][col_d] = origin_piece;
             origin_piece.move(row_d, col_d);
+            this._board[row_o][col_o] = 0;
+            this._board[row_d][col_d] = origin_piece;
+            this._move += 1;
+            origin_piece.increase_moves();
             return true;
         }
         console.log(this._board);

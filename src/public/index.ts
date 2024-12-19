@@ -8,6 +8,7 @@ const cb = new ChessPiece.chessBoard();
 function render(row_o: number, col_o: number, row_d: number, col_d: number){
     //check if the chessboard allows the piece to move
     if(!cb.move(row_o, col_o, row_d, col_d)) return false; 
+    
     const tileOrigin : HTMLElement | null = document.getElementById(`${row_o},${col_o}`); 
     let piece = ""; 
 

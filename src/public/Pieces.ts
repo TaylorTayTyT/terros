@@ -1,9 +1,11 @@
 abstract class Piece {
     _color: Number;
     _location: number[];
+    _moves: number; 
     constructor(color: Number, location: number[]) {
         this._color = color;  // Use a different name for the internal variable (e.g., _color)
         this._location = location;
+        this._moves = 0; 
     }
     // Getter for color
     get color() {
@@ -23,7 +25,12 @@ abstract class Piece {
     move(row: number, col: number) {
         this.location = [row, col]
     }
-
+    get moves(){
+        return this._moves;
+    }
+    increase_moves(){
+        this._moves += 1; 
+    }
     abstract valid_move(desired_location: Int16Array, cb: chessBoard) : boolean;
 }
 
@@ -35,11 +42,27 @@ class Pawn extends Piece{
     get color() {
         return this._color;
     };
+    
     valid_move(desired_location: Int16Array, cb: chessBoard) {
         const [row, col] = desired_location;
         const [curr_r, curr_c] = this._location;
-        const moveOnce = col == curr_c && curr_r + this._color.valueOf() == row
-        return col == curr_c && curr_r + this._color.valueOf() == row
+        const col_correct : boolean = col == curr_c;
+        let valid = false; 
+        const movedOnce = curr_r + this._color.valueOf() == row; 
+        const movedTwice = curr_r + 2 * this.color.valueOf() == row;
+        const occupied = typeof(cb.piece_by_location(row, col)) !== "number";
+        const capture = Math.abs(col - curr_c).valueOf() == 1 && movedOnce && occupied; 
+        if(col_correct){
+            const no_traffic = cb.one_at_a_time([this._color.valueOf(), 0], [row, col], [curr_r, curr_c])
+            if(movedOnce && no_traffic){
+                valid = true;
+            }
+            else if(this._moves == 0 && movedTwice && no_traffic){
+                valid = true; 
+            }
+        };
+        if(capture) valid = true; 
+        return valid;
     };
 };
 
@@ -68,6 +91,7 @@ class Rook extends Piece {
     valid_move(desired_location: Int16Array, cb: chessBoard){
         const [row, col] = desired_location;
         const [curr_r, curr_c] = this._location;
+        const technically_valid = row == curr_r && col != curr_c || row != curr_r && col == curr_c; 
         
         return row == curr_r && col != curr_c || row != curr_r && col == curr_c
     }
@@ -83,7 +107,12 @@ class Bishop extends Piece{
     valid_move(desired_location: Int16Array, cb: chessBoard){
         const [row, col] = desired_location;
         const [curr_r, curr_c] = this._location;
-        return Math.abs(curr_r - row) == Math.abs(curr_c - col)
+        const x_direction = col - curr_c > 0 ? 1 : - 1; 
+        const y_direction = row - curr_r > 0 ? 1 : -1; 
+        const technically_valid = Math.abs(curr_r - row) == Math.abs(curr_c - col);
+        const no_traffic = cb.one_at_a_time([x_direction, y_direction], [row, col], [curr_r, curr_c]);
+        if(technically_valid && no_traffic) return true; 
+        return false;
     }
 }
 
@@ -179,6 +208,20 @@ class chessBoard{
     piece_by_location(i: number, j:number){
         return this._board[i][j]
     };
+    add(from: number[], moveset: number[]) : number[]{
+        return [from[0] + moveset[0], from[1] + moveset[1]];
+    };
+    equals(from: number[], to: number[]) : boolean{
+        return from[0] == to[0] && from[1] == to[1];
+    };
+    one_at_a_time(moveset: number[], desired_location: number[], origin_location: number[]): boolean {
+        while (!this.equals(desired_location, origin_location)){
+            origin_location = this.add(origin_location, moveset);
+            const new_piece = this.piece_by_location(origin_location[0], origin_location[1]);
+            if(typeof new_piece != "number") return false; 
+        }
+        return true; 
+    };
 
     move(row_o: number, col_o: number, row_d: number, col_d: number) : boolean{
         const origin_piece: number | Piece = this.piece_by_location(row_o, col_o);
@@ -194,6 +237,10 @@ class chessBoard{
         if(origin_piece.valid_move(int16Destination, this)){
             this._board[row_d][col_d] = origin_piece; 
             origin_piece.move(row_d, col_d);
+            this._board[row_o][col_o] = 0; 
+            this._board[row_d][col_d] = origin_piece; 
+            this._move += 1; 
+            origin_piece.increase_moves();
             return true;
         }
         console.log(this._board)
