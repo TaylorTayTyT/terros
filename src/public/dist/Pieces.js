@@ -76,7 +76,14 @@ class King extends Piece {
     valid_move(desired_location, cb) {
         const [row, col] = desired_location;
         const [curr_r, curr_c] = this._location;
-        return Math.abs(row - curr_r) == 1 && col - curr_c == 0 || Math.abs(col - curr_c) == 1 && row - curr_r == 0;
+        const theoretically_okay = Math.abs(row - curr_r) == 1 && col - curr_c == 0 || Math.abs(col - curr_c) == 1 && row - curr_r == 0;
+        const destPiece = cb.piece_by_location(row, col);
+        let enemy = false;
+        if (typeof (destPiece) != "number")
+            enemy = destPiece._color != this._color;
+        else
+            enemy = true;
+        return theoretically_okay && enemy;
     }
 }
 ;
