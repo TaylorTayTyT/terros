@@ -54,7 +54,7 @@ class Pawn extends Piece{
         const capture = Math.abs(col - curr_c).valueOf() == 1 && movedOnce && occupied; 
         if(col_correct){
             const no_traffic = cb.one_at_a_time([this._color.valueOf(), 0], [row, col], [curr_r, curr_c])
-            if(movedOnce && no_traffic){
+            if(movedOnce && no_traffic && typeof(cb.piece_by_location(row, col)) == "number"){
                 valid = true;
             }
             else if(this._moves == 0 && movedTwice && no_traffic){
@@ -92,8 +92,17 @@ class Rook extends Piece {
         const [row, col] = desired_location;
         const [curr_r, curr_c] = this._location;
         const technically_valid = row == curr_r && col != curr_c || row != curr_r && col == curr_c; 
-        
-        return row == curr_r && col != curr_c || row != curr_r && col == curr_c
+        if(!technically_valid) return false; 
+        let no_traffic = true; 
+        if(row == curr_r){
+            const x_direction = col - curr_c > 0 ? 1 : -1; 
+            no_traffic = cb.one_at_a_time([0, x_direction], [row, col], [curr_r, curr_c]);
+        }
+        else{
+            const y_direction = row - curr_r > 0 ? 1 : -1; 
+            no_traffic = cb.one_at_a_time([y_direction, 0], [row, col], [curr_r, curr_c]);
+        }
+        return no_traffic;
     }
 };
 
@@ -110,7 +119,7 @@ class Bishop extends Piece{
         const x_direction = col - curr_c > 0 ? 1 : - 1; 
         const y_direction = row - curr_r > 0 ? 1 : -1; 
         const technically_valid = Math.abs(curr_r - row) == Math.abs(curr_c - col);
-        const no_traffic = cb.one_at_a_time([x_direction, y_direction], [row, col], [curr_r, curr_c]);
+        const no_traffic = cb.one_at_a_time([y_direction, x_direction], [row, col], [curr_r, curr_c]);
         if(technically_valid && no_traffic) return true; 
         return false;
     }
@@ -218,7 +227,7 @@ class chessBoard{
         while (!this.equals(desired_location, origin_location)){
             origin_location = this.add(origin_location, moveset);
             const new_piece = this.piece_by_location(origin_location[0], origin_location[1]);
-            if(typeof new_piece != "number") return false; 
+            if(typeof new_piece != "number" && !this.equals(origin_location, desired_location)) return false; 
         }
         return true; 
     };
